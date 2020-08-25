@@ -153,7 +153,7 @@ def load_weights():
         if 'conv' in name:
             conv_w = genfromtxt(paths[name + '_w'], delimiter=',', dtype=None)
             conv_w = np.reshape(conv_w, conv_shape[name])
-            conv_w = np.transpose(conv_w, (2, 3, 1, 0))
+            #conv_w = np.transpose(conv_w, (2, 3, 1, 0))
             conv_b = genfromtxt(paths[name + '_b'], delimiter=',', dtype=None)
             weights_dict[name] = [conv_w, conv_b]     
         elif 'bn' in name:

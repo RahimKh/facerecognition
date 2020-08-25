@@ -10,13 +10,7 @@ UPLOAD_FOLDER = "/home/rahim/app/static"
 MODEL_PATH = "model.json"
 MODEL_WEIGHTS = "model.h5"
 
-def FRmodel(model_path,model_weights):
-    with open(model_path) as file_json:
-        loaded_model_json = file_json.read()
-    loaded_model = model_from_json(loaded_model_json)
-    loaded_model.load_weights(model_weights)
-    loaded_model.compile(optimizer = 'adam', loss = triplet_loss, metrics = ['accuracy'])
-    return loaded_model
+
 
 def triplet_loss(y_true, y_pred, alpha = 0.2):
     anchor, positive, negative = y_pred[0], y_pred[1], y_pred[2]

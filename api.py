@@ -16,6 +16,8 @@ from flask import request
 from flask import Response
 from flask import jsonify
 from mtcnn.mtcnn import MTCNN
+from tensorflow.keras.models import model_from_json
+import tensorflow as tf
 
 
 #sess = tf.Session()
@@ -32,9 +34,26 @@ TABLE="encoding1"
 #facec = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
 #set_session(sess)
 
-detector = MTCNN()
 
 
+def FRmodel(model_path,model_weights):
+    global MODEL
+    global detector
+    global graph1
+    global session1
+    graph1 = tf.Graph()
+    with graph1.as_default():
+        session1 = tf.compat.v1.Session(graph=graph1)
+        with session1.as_default():
+            MODEL = tf.keras.models.load_model('my_model',custom_objects={'triplet_loss':model.triplet_loss})
+    global graph2
+    global session2
+    graph2 = tf.Graph()
+    with graph2.as_default():
+        session2 = tf.compat.v1.Session(graph=graph2)
+        with session2.as_default():
+            detector=MTCNN()
+    
 
 @app.route("/api/facerec/reg",methods=["POST"])
 def upload_predict():
@@ -56,17 +75,21 @@ def upload_predict():
         image_location=imageprocessing.image_decode(id,im_b64)
         imageprocessing.check_rotation(image_location)
         img=pyplot.imread(image_location)
-
-        faces=detector.detect_faces(img)
-        if (len(faces)==0):
-            imageprocessing.change_dpi(image_location)
-            img=pyplot.imread(image_location)
-            faces=detector.detect_faces(img)
+        with graph2.as_default():
+            with session2.as_default():
+                faces=detector.detect_faces(img)
+                if (len(faces)==0):
+                    imageprocessing.change_dpi(image_location)
+                    img=pyplot.imread(image_location)
+                    faces=detector.detect_faces(img)
         if (len(faces)==0):
             os.remove(image_location)
             return jsonify({"msg":"Couldn't find face"})
         print(faces)
-        img_encoded=imageprocessing.img_to_encoding(img,faces,MODEL)
+        
+        with graph1.as_default():
+            with session1.as_default():
+                img_encoded=imageprocessing.img_to_encoding(img,faces,MODEL)
         database.insert_to_base(id,img_encoded,TABLE)
         os.remove(image_location)
         return jsonify({"msg":"success",'id':id})
@@ -96,15 +119,17 @@ def check():
         if (len(faces)==0):
             os.remove(image_location)
             return jsonify({"msg":"Couldn't find face"})
-        new_encoding=imageprocessing.img_to_encoding(img,faces,MODEL)
+            
+        with graph.as_default():
+            new_encoding=imageprocessing.img_to_encoding(img,faces,MODEL)
         encoded=database.get_encoded_img(id,TABLE)
         checked=model.verify(new_encoding,id,encoded,MODEL)
         os.remove(image_location)
         return jsonify({'msg':'success' ,'PASS':checked})    
 
 if __name__ == "__main__":
-    
-    MODEL=model.FRmodel(MODEL_PATH,MODEL_WEIGHT)
+    detector = MTCNN()
+    FRmodel(MODEL_PATH,MODEL_WEIGHT)
     from waitress import serve
-    #serve(app,host="0.0.0.0",port="8080",threads=1)
+    #serve(app,host="0.0.0.0",port="8080")
     app.run(host='127.0.0.1', debug=False,threaded=False)
