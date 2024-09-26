@@ -3,6 +3,7 @@ import os
 import cv2
 import numpy as np
 from PIL import Image, ExifTags
+from keras_vggface.utils import preprocess_input
 
 UPLOAD_FOLDER="./static/images/"
 
@@ -40,15 +41,20 @@ def check_rotation(image_location):
         # cases: image don't have getexif
         pass
 
-def img_to_encoding(img1,faces,model):
-    x, y, w, h = faces[0]['box']
-    fc = img1[y:y+h, x:x+w]
-    roi = cv2.resize(fc, (96, 96))
-    img = roi[...,::-1]
-    img = np.around(np.transpose(img, (2,0,1))/255.0, decimals=12)
-    x_train = np.array([img])
-    embedding = model.predict_on_batch(x_train)
-    return embedding
+def img_to_encoding(img1,faces,model,required_size=(224, 224)):
+        x, y, w, h = faces[0]['box']
+        fc = img1[y:y+h, x:x+w]
+        image = Image.fromarray(fc)
+        image = image.resize(required_size)
+        face_array = np.asarray(image)
+        #roi = cv2.resize(fc, )
+        #img = roi[...,::-1]
+        #img = np.around(img/255.0, decimals=12)
+        x = np.asarray(face_array,'float32')
+        x = preprocess_input(x, version=2)
+        x=x[np.newaxis,...]
+        embedding = model.predict_on_batch(x)
+        return embedding
 
 def change_dpi(image_location):
     from PIL import Image
